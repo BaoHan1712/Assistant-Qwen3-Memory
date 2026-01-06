@@ -17,11 +17,11 @@ from memory import ConversationMemory
 SAMPLE_RATE = 16000
 
 WAKE_SECONDS   = 3
-RECORD_SECONDS = 7
+RECORD_SECONDS = 6
 
 WAKE_WORD = "Bảo ơi"
 
-OLLAMA_MODEL = "qwen3:4b"
+OLLAMA_MODEL = "gemma3:1b"
 
 BEEP_START = "assets/bip.wav"
 BEEP_STOP  = "assets/bip2.wav"
