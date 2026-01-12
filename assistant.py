@@ -12,6 +12,8 @@ from faster_whisper import WhisperModel
 from ollama import Client
 from text_processor import process_ai_response, sanitize_user_input
 from memory import ConversationMemory
+from send_uart import *
+from command_handler import CommandHandler
 
 # ================== CONFIG ==================
 SAMPLE_RATE = 16000
@@ -29,6 +31,8 @@ BEEP_STOP  = "assets/bip2.wav"
 PIPER_EXE  = r"piper.exe"
 TTS_MODEL  = r"assets\vi_VN-vais1000-medium.onnx"
 TTS_OUT    = r"assets\answer.wav"
+
+command_handler = CommandHandler(UART_PORT, UART_BAUD)
 # ===========================================
 
 
@@ -39,13 +43,13 @@ client = Client(host="http://localhost:11434")
 memory = ConversationMemory("conversation_memory.json", max_history=20)
 
 # ---------- STT ----------
-print("⏳ Loading Whisper STT model (Vietnamese)...")
+print("[*] Loading Whisper STT model (Vietnamese)...")
 stt_model = WhisperModel(
     "medium",          # tốt cho tiếng Việt
     device="cuda",
     compute_type="float16"
 )
-print("✅ STT loaded")
+print("[OK] STT loaded")
 
 
 # ================== UTILS ==================
@@ -126,7 +130,7 @@ def wait_for_wake_word():
     text = speech_to_text(audio)
 
     if text:
-        print("👂 Nghe:", text)
+        print("[HEAR] " + text)
         return detect_wake_word(text)
 
     return False
@@ -159,7 +163,7 @@ RULES:
     answer = process_ai_response(answer, max_chars=500)
 
     memory.add_message("assistant", answer)
-    print("🤖 Bảo:", answer)
+    print("[BOT] Bao: " + answer)
     return answer
 
 
@@ -181,37 +185,49 @@ def text_to_speech(text):
 
 # ================== MAIN ==================
 def main_loop():
-    print("\n🟢 Voice assistant started (wake-word fuzzy mode)\n")
+    print("\n[START] Voice assistant started\n")
 
     while True:
         try:
+            # Step 1: Chờ wake word
             if not wait_for_wake_word():
                 continue
 
-            print("🟢 Wake word detected!")
+            print("[OK] Wake word detected!")
             play_sound(BEEP_START)
 
+            # Step 2: Record audio
             audio = record_audio(RECORD_SECONDS)
             play_sound(BEEP_STOP)
 
+            # Step 3: STT - Chuyển đổi giọng nói thành text
             text = speech_to_text(audio)
             if not text:
+                print("[WARNING] Khong nhan duoc text")
                 continue
 
-            print("📝 User:", text)
+            print("[STT] " + text)
 
-            answer = ask_ollama(text)
-            if answer:
-                text_to_speech(answer)
+            # Step 4: Kiểm tra - Lệnh robot hay câu hỏi?
+            cmd, score = command_handler.detect_command(text)
+            
+            if cmd is not None:
+                print("[COMMAND] Lenh: " + cmd + " (score=" + f"{score:.2f}" + ")")
+                command_handler.execute(text)
+            else:
+                print("[QUERY] Cau hoi cho AI")
+                answer = ask_ollama(text)
+                if answer:
+                    text_to_speech(answer)
 
             print("-" * 50)
 
         except KeyboardInterrupt:
-            print("\n🛑 Exit")
+            print("\n[STOP] Exit")
             break
 
         except Exception as e:
-            print("❌ Error:", e)
+            print("[ERROR] " + str(e))
             import traceback
             traceback.print_exc()
 
