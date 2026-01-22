@@ -104,8 +104,7 @@ class CommandHandler:
         code = COMMAND_CODES[cmd]
         print("[EXECUTE] '" + cmd + "' | score=" + f"{score:.2f}" + " | steps=" + str(steps))
 
-        for i in range(steps):
-            self.esp.send(code)
+        self.esp.send(code, steps)
 
         return True
 

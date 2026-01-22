@@ -8,13 +8,13 @@ UART_BAUD = 115200
 
 
 # ================== CHECKSUM ==================
-def calc_checksum(action: int) -> int:
-    return action ^ 0xFF
+def calc_checksum(action: int, steps: int) -> int:
+    return (action ^ steps) ^ 0xFF
 
 # ================== PACKET ==================
-def pack_command(action: int) -> bytes:
-    checksum = calc_checksum(action)
-    return struct.pack("BB", action, checksum)
+def pack_command(action: int, steps: int) -> bytes:
+    checksum = calc_checksum(action, steps)
+    return struct.pack("BBB", action, steps, checksum)
 
 # ================== UART SEND ==================
 class ESP32Commander:
@@ -27,8 +27,8 @@ class ESP32Commander:
         print("[OK] UART connected to ESP32")
         time.sleep(0.2)  # chờ ESP32 ổn định
 
-    def send(self, action: int):
-        packet = pack_command(action)
+    def send(self, action: int, steps: int = 1):
+        packet = pack_command(action, steps)
         self.ser.write(packet)
         self.ser.flush()
 
